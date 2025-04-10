@@ -1,0 +1,69 @@
+import { Component } from '@angular/core';
+import { GridReadyEvent, IServerSideDatasource, IServerSideGetRowsParams } from 'ag-grid-community';
+import 'ag-grid-enterprise';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  private gridApi: any;
+
+  columnDefs = [
+    { field: 'id', filter: 'agNumberColumnFilter' },
+    { field: 'name', filter: 'agTextColumnFilter' },
+    { field: 'email', filter: 'agTextColumnFilter' },
+    { field: 'age', filter: 'agNumberColumnFilter' },
+  ];
+
+  defaultColDef = {
+    flex: 1,
+    minWidth: 100,
+    filter: true,
+    sortable: true,
+    resizable: true,
+  };
+
+  dataSource: IServerSideDatasource = {
+    getRows: (params: IServerSideGetRowsParams) => {
+      console.log('[Datasource] Requesting rows:', params.request);
+
+      // 🔍 Log the filters being applied
+      const filterModel = params.request.filterModel;
+      if (filterModel && Object.keys(filterModel).length > 0) {
+        for (const field in filterModel) {
+          const filterValue = filterModel[field].filter;
+          console.log(`🔍 Filtering field: ${field}, value: ${filterValue}`);
+        }
+      }
+
+      // Simulate an API call
+      fetch('http://localhost:3000/api/data', {
+        method: 'POST',
+        body: JSON.stringify(params.request),
+        headers: { 'Content-Type': 'application/json' },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          params.successCallback(data.rows, data.totalCount);
+        })
+        .catch((err) => {
+          console.error('❌ Error fetching data', err);
+          params.failCallback();
+        });
+    },
+  };
+
+  onGridReady(params: GridReadyEvent) {
+    this.gridApi = params.api;
+    params.api.setServerSideDatasource(this.dataSource);
+  }
+
+  onFilterChanged() {
+    const filterModel = this.gridApi.getFilterModel();
+    for (const field in filterModel) {
+      const value = filterModel[field].filter;
+      console.log(`✅ Filter changed on column: "${field}", search value: "${value}"`);
+    }
+  }
+}
